@@ -83,6 +83,7 @@ fun MainScreen(
     onCycleTheme: () -> Unit = {},
     onBackToProfiles: () -> Unit = {},
     onNavigateToFullPlayer: () -> Unit = {},
+    onNavigateToDetails: () -> Unit = {},
     exitHintText: String? = null,
     onTriggerBack: () -> Boolean = { false },
     onExitApp: () -> Unit = {}
