@@ -83,10 +83,12 @@ fun MainScreen(
     onCycleTheme: () -> Unit = {},
     onBackToProfiles: () -> Unit = {},
     onNavigateToFullPlayer: () -> Unit = {},
+    onNavigateToDetails: () -> Unit = {},
     exitHintText: String? = null,
     onTriggerBack: () -> Boolean = { false },
     onExitApp: () -> Unit = {}
-) {
+)
+{
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val profiles by viewModel.profiles.collectAsState(initial = emptyList())
