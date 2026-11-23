@@ -83,7 +83,6 @@ fun MainScreen(
     onCycleTheme: () -> Unit = {},
     onBackToProfiles: () -> Unit = {},
     onNavigateToFullPlayer: () -> Unit = {},
-    onNavigateToDetails: () -> Unit = {},
     exitHintText: String? = null,
     onTriggerBack: () -> Boolean = { false },
     onExitApp: () -> Unit = {}
@@ -108,13 +107,18 @@ fun MainScreen(
 
     val gridState = rememberLazyGridState()
 
-    val livePlayer = remember {
-        ExoPlayer.Builder(context.applicationContext).build()
+    var livePlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+
+    fun ensureLivePlayer(): ExoPlayer {
+        return livePlayer ?: ExoPlayer.Builder(context.applicationContext).build().also {
+            livePlayer = it
+        }
     }
 
     DisposableEffect(Unit) {
         onDispose {
-            livePlayer.release()
+            livePlayer?.release()
+            livePlayer = null
         }
     }
 
@@ -134,7 +138,8 @@ fun MainScreen(
             selectedCategory = restCat
             searchQuery = restSearch
             focusHistoryByKey["$restTab|$restCat"] = restIndex
-            gridState.scrollToItem(restIndex)
+            val maxIdx = (filteredChannels.size - 1).coerceAtLeast(0)
+            gridState.scrollToItem(restIndex.coerceAtMost(maxIdx))
             runCatching { lastFocusedItemRequester.requestFocus() }
             hasRestoredInitialHistory = true
         }
@@ -159,8 +164,8 @@ fun MainScreen(
     }
 
     fun stopPlayback() {
-        livePlayer.stop()
-        livePlayer.clearMediaItems()
+        livePlayer?.stop()
+        livePlayer?.clearMediaItems()
         isPlayerActive = false
         viewModel.setStreamUrl(null, "")
     }
@@ -175,8 +180,8 @@ fun MainScreen(
         openFullscreen: Boolean = true
     ) {
         if (url.isBlank()) return
-        livePlayer.stop()
-        livePlayer.playWhenReady = false
+        livePlayer?.stop()
+        livePlayer?.playWhenReady = false
         isPlayerActive = false
         viewModel.startPlaylistPlayback(
             titles = playlistTitles,
@@ -255,9 +260,9 @@ fun MainScreen(
             startStreamPlayback(
                 url = channel.url,
                 title = channel.title,
-                playlistTitles = validItems.map { it.title },
-                playlistUrls = validItems.map { it.url },
-                playlistRemoteIds = validItems.map { ch -> ch.remoteId },
+                playlistTitles = if (validItems.isNotEmpty()) validItems.map { it.title } else listOf(channel.title),
+                playlistUrls = if (validItems.isNotEmpty()) validItems.map { it.url } else listOf(channel.url),
+                playlistRemoteIds = if (validItems.isNotEmpty()) validItems.map { ch -> ch.remoteId } else listOf(channel.remoteId),
                 startIndex = mappedIdx,
                 openFullscreen = true
             )
@@ -566,11 +571,11 @@ fun MainScreen(
                             AndroidView(
                                 factory = { ctx ->
                                     PlayerView(ctx).apply {
-                                        player = livePlayer
+                                        player = ensureLivePlayer()
                                         useController = false
                                     }
                                 },
-                                update = { it.player = livePlayer },
+                                update = { it.player = ensureLivePlayer() },
                                 modifier = Modifier
                                     .width(176.dp)
                                     .fillMaxHeight()
@@ -888,7 +893,7 @@ fun MainScreen(
                     .clip(RoundedCornerShape(9.dp))
                     .background(Color(0xFF0476F2))
                     .heroFocusable(RoundedCornerShape(9.dp)) {
-                        livePlayer.playWhenReady = false
+                        livePlayer?.playWhenReady = false
                         val activeUrl = uiState.currentStreamUrl ?: filteredChannels.firstOrNull()?.url
                         val activeTitle = uiState.currentChannelTitle.ifBlank {
                             filteredChannels.firstOrNull { it.url == activeUrl }?.title ?: "Canal"
