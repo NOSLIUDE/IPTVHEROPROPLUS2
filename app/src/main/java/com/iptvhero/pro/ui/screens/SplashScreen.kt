@@ -6,12 +6,18 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,96 +29,303 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iptvhero.pro.R
 import com.iptvhero.pro.ui.theme.DcBlue
+import com.iptvhero.pro.ui.theme.DcCyan
 import com.iptvhero.pro.ui.theme.GoldFocus
 import com.iptvhero.pro.ui.theme.MarvelRed
 import com.iptvhero.pro.ui.theme.MarvelYellow
 import com.iptvhero.pro.ui.theme.TextDim
+import com.iptvhero.pro.ui.theme.TextPrimary
 import kotlinx.coroutines.delay
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
-fun SplashScreen(onFinished: () -> Unit) {
+fun SplashScreen(
+    onFinished: () -> Unit
+) {
     LaunchedEffect(Unit) {
-        delay(1500)
+        delay(1700)
         onFinished()
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "splash")
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
-        label = "pulse"
+    val infiniteTransition = rememberInfiniteTransition(label = "comic_splash")
+    val badgeScale by infiniteTransition.animateFloat(
+        initialValue = 0.98f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "badge_scale"
     )
+    val burstAngle by infiniteTransition.animateFloat(
+        initialValue = -2f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse),
+        label = "burst_angle"
+    )
+
+    val comicInk = Color(0xFF06070C)
+    val halftoneDot = Color.White.copy(alpha = 0.08f)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0xFF1A1025), Color(0xFF05050B))
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF1A070C),
+                        Color(0xFF080A14),
+                        Color(0xFF07162E)
+                    )
                 )
-            ),
+            )
+            .padding(18.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            Canvas(modifier = Modifier.size(88.dp).scale(pulse)) {
-                val w = size.width
-                val h = size.height
-                val shieldPath = Path().apply {
-                    moveTo(w * 0.5f, h * 0.04f)
-                    lineTo(w * 0.92f, h * 0.24f)
-                    lineTo(w * 0.84f, h * 0.74f)
-                    lineTo(w * 0.5f, h * 0.96f)
-                    lineTo(w * 0.16f, h * 0.74f)
-                    lineTo(w * 0.08f, h * 0.24f)
-                    close()
+        // Pontilhado estilo halftone de HQ ao fundo
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val step = 18.dp.toPx()
+            val radius = 1.7.dp.toPx()
+            var y = step * 0.5f
+            while (y < size.height) {
+                var x = step * 0.5f
+                while (x < size.width) {
+                    drawCircle(
+                        color = halftoneDot,
+                        radius = radius,
+                        center = Offset(x, y)
+                    )
+                    x += step
                 }
-                drawPath(shieldPath, color = Color(0xD90A0A16))
-                drawPath(
-                    shieldPath,
-                    brush = Brush.linearGradient(listOf(MarvelRed, MarvelYellow, DcBlue)),
-                    style = Stroke(width = 4.dp.toPx())
+                y += step
+            }
+        }
+
+        // Painel principal estilo capa de revista em quadrinhos com borda nanquim espessa
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(18.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xE6111524),
+                            Color(0xF2080B14)
+                        )
+                    )
+                )
+                .border(4.dp, comicInk, RoundedCornerShape(18.dp))
+                .border(1.5.dp, MarvelYellow.copy(alpha = 0.75f), RoundedCornerShape(18.dp))
+                .padding(20.dp)
+        ) {
+            // Selo de edição no canto superior esquerdo
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .rotate(-3f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MarvelYellow)
+                    .border(3.dp, comicInk, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "ISSUE #01 • MULTIVERSE",
+                    color = comicInk,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 11.sp,
+                    letterSpacing = 1.2.sp
                 )
             }
 
-            Text(
-                text = "IPTV HERO PRO+",
-                style = TextStyle(
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 4.sp,
-                    brush = Brush.horizontalGradient(listOf(MarvelYellow, MarvelRed, DcBlue))
-                )
-            )
-
-            Text(
-                text = "MULTIVERSE • LIVE • VOD",
-                color = TextDim,
-                fontSize = 12.sp,
-                letterSpacing = 5.sp
-            )
-
-            LinearProgressIndicator(
+            // Balão de impacto / ação no canto superior direito
+            Box(
                 modifier = Modifier
-                    .width(260.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = GoldFocus,
-                trackColor = Color.White.copy(alpha = 0.1f)
-            )
+                    .align(Alignment.TopEnd)
+                    .rotate(4f)
+                    .scale(badgeScale)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MarvelRed)
+                    .border(3.dp, comicInk, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "ACTION TV!",
+                    color = MarvelYellow,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            // Centro: Raios de ação em HQ + R.drawable.splash_logo + Título em caixa de quadrinhos
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(220.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .rotate(burstAngle)
+                    ) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val rays = 24
+                        val innerR = size.minDimension * 0.24f
+                        val outerR = size.minDimension * 0.50f
+                        for (i in 0 until rays) {
+                            val angle = (i * (360f / rays)) * (PI / 180.0)
+                            val start = Offset(
+                                center.x + (cos(angle) * innerR).toFloat(),
+                                center.y + (sin(angle) * innerR).toFloat()
+                            )
+                            val end = Offset(
+                                center.x + (cos(angle) * outerR).toFloat(),
+                                center.y + (sin(angle) * outerR).toFloat()
+                            )
+                            drawLine(
+                                color = if (i % 2 == 0) MarvelYellow.copy(alpha = 0.28f) else DcCyan.copy(alpha = 0.22f),
+                                start = start,
+                                end = end,
+                                strokeWidth = 3.dp.toPx()
+                            )
+                        }
+                    }
+
+                    // Logo R.drawable.splash_logo dentro de quadro de HQ
+                    Box(
+                        modifier = Modifier
+                            .size(156.dp)
+                            .scale(badgeScale)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color(0xFF0C101D))
+                            .border(4.dp, comicInk, RoundedCornerShape(18.dp))
+                            .border(2.dp, GoldFocus, RoundedCornerShape(18.dp))
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.splash_logo),
+                            contentDescription = "IPTV Hero Pro Splash Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                // Placa principal estilo título de revista em quadrinhos
+                Box(
+                    modifier = Modifier
+                        .rotate(-1.5f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(MarvelRed, Color(0xFF141B2E), DcBlue)
+                            )
+                        )
+                        .border(3.5.dp, comicInk, RoundedCornerShape(10.dp))
+                        .padding(horizontal = 24.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = "IPTV HERO PRO+",
+                        color = MarvelYellow,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 28.sp,
+                        letterSpacing = 3.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Faixa de subtítulo em estilo balão/legenda de HQ
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF0A0E1A))
+                        .border(2.5.dp, comicInk, RoundedCornerShape(8.dp))
+                        .border(1.dp, DcCyan.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "LIVE TV",
+                        color = MarvelYellow,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.5.sp
+                    )
+                    Text("•", color = TextDim, fontSize = 11.sp)
+                    Text(
+                        text = "MOVIES",
+                        color = DcCyan,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.5.sp
+                    )
+                    Text("•", color = TextDim, fontSize = 11.sp)
+                    Text(
+                        text = "SERIES",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            }
+
+            // Rodapé estilo legenda de quadro de quadrinhos + barra de progresso
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .offset(y = (-2).dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MarvelYellow)
+                        .border(2.5.dp, comicInk, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 14.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "CARREGANDO UNIVERSO...",
+                        color = comicInk,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.4.sp
+                    )
+                }
+
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .border(1.5.dp, comicInk, RoundedCornerShape(6.dp)),
+                    color = MarvelYellow,
+                    trackColor = Color.White.copy(alpha = 0.14f)
+                )
+            }
         }
     }
 }
