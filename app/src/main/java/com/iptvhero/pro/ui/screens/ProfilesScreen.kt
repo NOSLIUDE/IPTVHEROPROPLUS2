@@ -137,7 +137,6 @@ fun ProfilesScreen(
                             )
                             .heroFocusable(RoundedCornerShape(16.dp)) {
                                 onSelectProfile(profile.id)
-                                onEnterApp()
                             }
                             .padding(16.dp)
                     ) {
