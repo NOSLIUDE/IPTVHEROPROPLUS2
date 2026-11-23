@@ -158,7 +158,7 @@ fun MainScreen(
             selectedTab = restTab
             selectedCategory = restCat
             searchQuery = restSearch
-            focusHistoryByKey["$restTab\vert{}$restCat"] = restIndex
+            focusHistoryByKey["$restTab|$restCat"] = restIndex
             val maxIdx = (filteredChannels.size - 1).coerceAtLeast(0)
             gridState.scrollToItem(restIndex.coerceAtMost(maxIdx))
             runCatching { lastFocusedItemRequester.requestFocus() }
@@ -166,7 +166,7 @@ fun MainScreen(
         }
     }
 
-    fun currentScopeKey(): String = "$selectedTab\vert{}$selectedCategory"
+    fun currentScopeKey(): String = "$selectedTab|$selectedCategory"
 
     fun restoreScrollForScope(scopeKey: String) {
         val savedIndex = focusHistoryByKey[scopeKey] ?: 0
@@ -181,7 +181,7 @@ fun MainScreen(
             categoryHistory.add(selectedCategory)
             selectedCategory = newCategory
         }
-        restoreScrollForScope("$selectedTab\vert{}$newCategory")
+        restoreScrollForScope("$selectedTab|$newCategory")
     }
 
     fun stopPlayback() {
@@ -220,9 +220,9 @@ fun MainScreen(
 
     fun playEpisode(episode: SeriesEpisode, seasonEpisodes: List<SeriesEpisode> = emptyList(), epIdx: Int = 0) {
         val epUrl = viewModel.buildEpisodeStreamUrl(episode) ?: return
-        val fullTitle = "${uiState.selectedSeriesTitle} • T${selectedSeasonKey}E${episode.episodeNum} -${episode.title}"
+        val fullTitle = "${uiState.selectedSeriesTitle} • T${selectedSeasonKey}E${episode.episodeNum} - ${episode.title}"
         val titles = if (seasonEpisodes.isNotEmpty()) {
-            seasonEpisodes.map { "${uiState.selectedSeriesTitle} • T${selectedSeasonKey}E${it.episodeNum} -${it.title}" }
+            seasonEpisodes.map { "${uiState.selectedSeriesTitle} • T${selectedSeasonKey}E${it.episodeNum} - ${it.title}" }
         } else listOf(fullTitle)
         val urls = if (seasonEpisodes.isNotEmpty()) {
             seasonEpisodes.mapNotNull { viewModel.buildEpisodeStreamUrl(it) }
@@ -305,7 +305,7 @@ fun MainScreen(
                     text = if (uiState.currentChannelTitle.isNotBlank()) {
                         "Reproduzindo: ${uiState.currentChannelTitle}"
                     } else {
-                        activeProfile?.let { "Perfil: ${it.name} •${channels.size} itens" }
+                        activeProfile?.let { "Perfil: ${it.name} • ${channels.size} itens" }
                             ?: "Sem perfil ativo"
                     },
                     color = Color.White.copy(alpha = 0.88f),
@@ -510,7 +510,7 @@ fun MainScreen(
                                         tab = selectedTab,
                                         category = catName,
                                         search = searchQuery,
-                                        focusedIndex = focusHistoryByKey["$selectedTab\vert{}$catName"] ?: 0
+                                        focusedIndex = focusHistoryByKey["$selectedTab|$catName"] ?: 0
                                     )
                                 }
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
@@ -838,4 +838,313 @@ fun MainScreen(
                     .heroFocusable(RoundedCornerShape(9.dp)) { viewModel.loadHeroListFromGithub() }
                     .padding(horizontal = 14.dp, vertical = 7.dp)
             ) {
-                Text("HERO LISTA", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11
+                Text("HERO LISTA", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xFF1A2238))
+                    .heroFocusable(RoundedCornerShape(9.dp)) {
+                        activeProfile?.id?.let { viewModel.selectProfile(it) }
+                            ?: viewModel.loadHeroListFromGithub(force = true)
+                    }
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
+            ) {
+                Text("Atualizar", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xFF3B1219))
+                    .heroFocusable(RoundedCornerShape(9.dp)) { stopPlayback() }
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
+            ) {
+                Text("STOP", color = Color(0xFFFF6B6E), fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xFF090D16))
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                val activeConn = activeProfile?.activeConnections ?: if (isPlayerActive) 1 else 0
+                val maxConn = activeProfile?.maxConnections?.toString() ?: "∞"
+                Text(
+                    text = "Conexões Ativas: $activeConn / $maxConn",
+                    color = DcCyan,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xFF0476F2))
+                    .heroFocusable(RoundedCornerShape(9.dp)) {
+                        livePlayer?.playWhenReady = false
+                        val activeUrl = uiState.currentStreamUrl ?: filteredChannels.firstOrNull()?.url
+                        val activeTitle = uiState.currentChannelTitle.ifBlank {
+                            filteredChannels.firstOrNull { it.url == activeUrl }?.title ?: "Canal"
+                        }
+                        val activeRemoteId = filteredChannels.firstOrNull { it.url == activeUrl }?.remoteId
+                        if (!activeUrl.isNullOrBlank()) {
+                            startStreamPlayback(
+                                url = activeUrl,
+                                title = activeTitle,
+                                playlistRemoteIds = listOf(activeRemoteId),
+                                startIndex = 0,
+                                openFullscreen = true
+                            )
+                        } else {
+                            onNavigateToFullPlayer()
+                        }
+                    }
+                    .padding(horizontal = 16.dp, vertical = 7.dp)
+            ) {
+                Text("FULL", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+            }
+        }
+    }
+
+    if (uiState.selectedSeriesTitle.isNotBlank()) {
+        Dialog(
+            onDismissRequest = { viewModel.closeSeriesSeasons() },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.84f)
+                    .fillMaxHeight(0.82f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xF50B0F1C))
+                    .border(1.5.dp, GoldFocus, RoundedCornerShape(16.dp))
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "SÉRIE SELECIONADA",
+                            color = DcCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = uiState.selectedSeriesTitle,
+                            color = TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color(0xFF3B1219))
+                            .heroFocusable(RoundedCornerShape(9.dp)) { viewModel.closeSeriesSeasons() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text("FECHAR", color = Color(0xFFFF6B6E), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                    }
+                }
+
+                if (uiState.isLoadingSeasons) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            CircularProgressIndicator(color = GoldFocus)
+                            Text("Carregando temporadas e episódios...", color = TextDim, fontSize = 13.sp)
+                        }
+                    }
+                } else if (uiState.seasonsMap.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = uiState.errorMessage ?: "Nenhuma temporada ou episódio encontrado para esta série.",
+                            color = MarvelYellow,
+                            fontSize = 13.sp
+                        )
+                    }
+                } else {
+                    val seasonKeys = uiState.seasonsMap.keys.toList()
+                    val activeSeason = if (selectedSeasonKey in seasonKeys) selectedSeasonKey else seasonKeys.first()
+                    val episodes = uiState.seasonsMap[activeSeason].orEmpty()
+
+                    Text(
+                        text = "TEMPORADAS (${seasonKeys.size})",
+                        color = GoldFocus,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(seasonKeys) { sKey ->
+                            val isSeasonSelected = sKey == activeSeason
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(if (isSeasonSelected) GoldFocus.copy(alpha = 0.25f) else Color(0xFF151C2E))
+                                    .heroFocusable(RoundedCornerShape(9.dp)) { selectedSeasonKey = sKey }
+                                    .padding(horizontal = 16.dp, vertical = 9.dp)
+                            ) {
+                                Text(
+                                    text = "Temporada $sKey",
+                                    color = if (isSeasonSelected) GoldFocus else TextPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "EPISÓDIOS • TEMPORADA $activeSeason (${episodes.size})",
+                        color = DcCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        items(
+                            items = episodes,
+                            key = { ep: SeriesEpisode -> "${activeSeason}_${ep.id}_${ep.episodeNum}" }
+                        ) { ep: SeriesEpisode ->
+                            val epIndex = episodes.indexOf(ep).coerceAtLeast(0)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF141B2E))
+                                    .heroFocusable(RoundedCornerShape(10.dp)) { playEpisode(ep, episodes, epIndex) }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color(0xFF1E2944))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "EP ${ep.episodeNum.toString().padStart(2, '0')}",
+                                            color = GoldFocus,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+
+                                    Text(
+                                        text = ep.title,
+                                        color = TextPrimary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    if (!ep.duration.isNullOrBlank()) {
+                                        Text(
+                                            text = ep.duration,
+                                            color = TextDim,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    Text(
+                                        text = "ASSISTIR ▶",
+                                        color = DcCyan,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showProfileDialog) {
+        ProfileManagerDialog(
+            profiles = profiles,
+            activeProfileId = activeProfile?.id,
+            onDismiss = { showProfileDialog = false },
+            onActivateProfile = { viewModel.selectProfile(it) },
+            onDeleteProfile = { viewModel.deleteProfile(it) },
+            onImportContent = { txtContent ->
+                viewModel.importBatchTxt(txtContent)
+                showProfileDialog = false
+            },
+            onImportGithubHero = { url ->
+                viewModel.loadHeroListFromGithub(url)
+                showProfileDialog = false
+            },
+            onImportXtream = { server, user, pass ->
+                viewModel.importXtream(server, user, pass)
+                showProfileDialog = false
+            }
+        )
+    }
+
+    if (uiState.pendingHeroMessage != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissPendingHeroList() },
+            title = { Text("Atualização de Lista") },
+            text = { Text(uiState.pendingHeroMessage ?: "") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmPendingHeroList() }) {
+                    Text("Confirmar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissPendingHeroList() }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
